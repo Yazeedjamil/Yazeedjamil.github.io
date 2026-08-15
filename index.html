@@ -345,6 +345,104 @@ footer { background: var(--text); border-top: 1px solid rgba(255,255,255,0.08); 
 }
 .cred-upload-area.has-img:hover .cred-upload-overlay { opacity: 0 !important; }
 .proj-img.has-image:hover .remove-btn { display: none !important; }
+
+/* ===================== MOTION LAYER ===================== */
+:root { --ease: cubic-bezier(0.16, 1, 0.3, 1); }
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* --- refined scroll reveals + stagger (only on observed elements) --- */
+  html.motion .reveal,
+  html.motion .proj-card,
+  html.motion .cred-item,
+  html.motion .edu-item,
+  html.motion .tool-card {
+    transform: translateY(28px);
+    transition: opacity 0.85s var(--ease), transform 0.85s var(--ease);
+    transition-delay: calc(var(--i, 0) * 60ms);
+  }
+  html.motion .reveal.visible,
+  html.motion .proj-card.visible,
+  html.motion .cred-item.visible,
+  html.motion .edu-item.visible,
+  html.motion .tool-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  /* the old fixed nth-child delays fight the --i stagger */
+  html.motion .proj-card:nth-child(n) {
+    transition: opacity 0.85s var(--ease), transform 0.85s var(--ease), background 0.2s;
+    transition-delay: calc(var(--i, 0) * 60ms);
+  }
+
+  /* --- cover intro: line-by-line mask reveal --- */
+  html.motion .cover-title .ln { display: block; overflow: hidden; }
+  html.motion .cover-title .ln > span {
+    display: block;
+    transform: translateY(110%);
+    transition: transform 1.15s var(--ease);
+  }
+  html.motion .cover-title .ln:nth-child(2) > span { transition-delay: 0.10s; }
+  html.motion.intro .cover-title .ln > span { transform: translateY(0); }
+
+  html.motion .cover-label,
+  html.motion .cover-sub {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+  }
+  html.motion.intro .cover-label { opacity: 1; transform: none; transition-delay: 0.15s; }
+  html.motion.intro .cover-sub   { opacity: 1; transform: none; transition-delay: 0.55s; }
+
+  html.motion .arch-svg {
+    opacity: 0;
+    transition: opacity 1.6s var(--ease);
+    will-change: transform;
+  }
+  html.motion.intro .arch-svg { opacity: 0.15; transition-delay: 0.35s; }
+
+  /* --- section counters slide in with their section --- */
+  html.motion .page-num {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+  }
+  html.motion .page.in-view .page-num { opacity: 1; transform: translateY(0); }
+
+  html.motion .page-rule {
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 1s var(--ease) 0.1s;
+  }
+  html.motion .page.in-view .page-rule { transform: scaleX(1); }
+
+  /* --- imagery: slow scale on hover --- */
+  html.motion .proj-img { overflow: hidden; }
+  html.motion .proj-img img,
+  html.motion .tool-thumb img {
+    transition: transform 1s var(--ease);
+  }
+  html.motion .proj-card:hover .proj-img img { transform: scale(1.055); }
+  html.motion .tool-card:hover .tool-thumb img { transform: scale(1.04); }
+
+  html.motion nav { transition: padding 0.4s var(--ease), background 0.3s; }
+}
+
+/* the nav shrink handler writes inline padding meant for desktop;
+   stop it applying 60px side padding on phones */
+@media (max-width: 640px) {
+  nav { padding: 16px 24px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.motion .cover-title .ln > span { transform: none !important; }
+  html.motion .cover-label,
+  html.motion .cover-sub { opacity: 1 !important; transform: none !important; }
+  html.motion .page-num  { opacity: 1 !important; transform: none !important; }
+  html.motion .page-rule { transform: none !important; }
+  html.motion .arch-svg  { opacity: 0.15 !important; }
+}
+/* =================== END MOTION LAYER =================== */
 </style>
 </head>
 <body>
@@ -949,6 +1047,76 @@ window.addEventListener('scroll', () => {
   const n = document.querySelector('nav');
   n.style.padding = window.scrollY > 60 ? '16px 60px' : '24px 60px';
 });
+
+/* ===================== MOTION LAYER ===================== */
+(function () {
+  var root = document.documentElement;
+
+  // Never hide anything unless we are certain we can reveal it again.
+  root.classList.add('motion');
+
+  // --- cover title: split on <br> into masked lines ---
+  var title = document.querySelector('.cover-title');
+  if (title && !title.querySelector('.ln')) {
+    var parts = title.innerHTML.split(/<br\s*\/?>/i);
+    title.innerHTML = parts
+      .map(function (p) { return '<span class="ln"><span>' + p.trim() + '</span></span>'; })
+      .join('');
+  }
+
+  // Play the intro on the next painted frame.
+  // requestAnimationFrame does NOT fire while the tab is hidden (e.g. the link
+  // was opened in a background tab), which would leave the cover blank, so back
+  // it up with visibilitychange and an unconditional timeout.
+  function play() { root.classList.add('intro'); }
+  requestAnimationFrame(function () { requestAnimationFrame(play); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) play();
+  });
+  window.addEventListener('load', function () { setTimeout(play, 50); });
+  setTimeout(play, 2500);
+
+  // --- stagger: ONLY elements the reveal observer already watches ---
+  ['.tools-grid', '.proj-grid'].forEach(function (sel) {
+    var grid = document.querySelector(sel);
+    if (!grid) return;
+    Array.prototype.forEach.call(grid.children, function (el, i) {
+      el.style.setProperty('--i', i % 3);
+    });
+  });
+
+  // --- section counters / rules ---
+  if ('IntersectionObserver' in window) {
+    var secObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) e.target.classList.add('in-view');
+      });
+    }, { threshold: 0.04 });
+    document.querySelectorAll('.page').forEach(function (el) { secObs.observe(el); });
+  } else {
+    document.querySelectorAll('.page').forEach(function (el) { el.classList.add('in-view'); });
+  }
+
+  // --- parallax on the cover artwork ---
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var art = document.querySelector('.arch-svg');
+    var ticking = false;
+    if (art) {
+      window.addEventListener('scroll', function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          var y = window.pageYOffset;
+          if (y < window.innerHeight * 1.6) {
+            art.style.transform = 'translate3d(0,' + (y * 0.11).toFixed(1) + 'px,0)';
+          }
+          ticking = false;
+        });
+      }, { passive: true });
+    }
+  }
+})();
+/* =================== END MOTION LAYER =================== */
 </script>
 
 </body>
