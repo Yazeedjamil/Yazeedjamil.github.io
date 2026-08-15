@@ -320,6 +320,16 @@ footer { background: var(--text); border-top: 1px solid rgba(255,255,255,0.08); 
   nav { padding: 18px 24px; }
 }
 
+/* RESPONSIVE — tools grid (was locked to 3 columns on every screen) */
+@media (max-width: 960px) {
+  .tools-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .tools-grid { grid-template-columns: 1fr; }
+  .tool-card { padding: 26px 22px; }
+  .tool-thumb { aspect-ratio: 16/9; }
+}
+
 /* PUBLIC VIEW — hide edit controls */
 .upload-btn, .remove-btn { display: none !important; }
 .proj-img input[type="file"], .cred-upload-area input[type="file"] { display: none !important; }
