@@ -1251,12 +1251,14 @@ window.addEventListener('scroll', () => {
     if (!ENDPOINT || !KEY) return;                       /* not configured yet */
     if (location.protocol === 'file:') return;           /* opened from disk */
     if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;  /* local testing */
-    if (sessionStorage.getItem('pv')) return;            /* already counted this session */
+    /* ?ping=force lets the owner test; real visitors still ping once per session */
+    var force = /[?&]ping=force/.test(location.search);
+    if (!force && sessionStorage.getItem('pv')) return;   /* already counted this session */
     sessionStorage.setItem('pv', '1');
 
     var d = {
       k: KEY,
-      ref: document.referrer || 'direct',
+      ref: force ? 'OWNER TEST' : (document.referrer || 'direct'),
       lang: navigator.language || '',
       scr: (screen.width || 0) + 'x' + (screen.height || 0),
       ua: navigator.userAgent || '',
