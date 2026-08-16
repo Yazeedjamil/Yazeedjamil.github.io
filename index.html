@@ -1245,8 +1245,8 @@ window.addEventListener('scroll', () => {
    ENDPOINT and KEY are filled in. No cookies, no personal data, one ping per
    browser session. */
 (function () {
-  var ENDPOINT = '';   /* <- Apps Script /exec URL goes here */
-  var KEY      = '';   /* <- the SECRET from Code.gs */
+  var ENDPOINT = 'https://script.google.com/macros/s/AKfycbydb048Z4Sq4cA-k1MYpAEp5HJygBnpYWjp88sy8Uc3GJjaj62MXY6ozadxOk5H4BtMZQ/exec';
+  var KEY      = 'yz-qfp7fp8d7ntpnr';
   try {
     if (!ENDPOINT || !KEY) return;                       /* not configured yet */
     if (location.protocol === 'file:') return;           /* opened from disk */
