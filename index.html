@@ -1239,6 +1239,42 @@ window.addEventListener('scroll', () => {
   });
 })();
 /* =================== END PROJECT VIEWER =================== */
+
+/* ===================== VISIT PINGER =====================
+   Tells Yazeed's Apps Script that someone opened the page. Inert until
+   ENDPOINT and KEY are filled in. No cookies, no personal data, one ping per
+   browser session. */
+(function () {
+  var ENDPOINT = '';   /* <- Apps Script /exec URL goes here */
+  var KEY      = '';   /* <- the SECRET from Code.gs */
+  try {
+    if (!ENDPOINT || !KEY) return;                       /* not configured yet */
+    if (location.protocol === 'file:') return;           /* opened from disk */
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;  /* local testing */
+    if (sessionStorage.getItem('pv')) return;            /* already counted this session */
+    sessionStorage.setItem('pv', '1');
+
+    var d = {
+      k: KEY,
+      ref: document.referrer || 'direct',
+      lang: navigator.language || '',
+      scr: (screen.width || 0) + 'x' + (screen.height || 0),
+      ua: navigator.userAgent || '',
+      path: location.pathname || '/'
+    };
+    var qs = Object.keys(d).map(function (n) {
+      return n + '=' + encodeURIComponent(d[n]);
+    }).join('&');
+
+    /* fire and forget - an Image GET avoids CORS entirely and cannot block
+       rendering. The browser will log a console warning about the response
+       type; that is expected and harmless. */
+    var img = new Image();
+    img.referrerPolicy = 'no-referrer-when-downgrade';
+    img.src = ENDPOINT + '?' + qs;
+  } catch (e) { /* never let analytics break the page */ }
+})();
+/* =================== END VISIT PINGER =================== */
 </script>
 
 </body>
