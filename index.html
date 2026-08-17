@@ -1251,10 +1251,15 @@ window.addEventListener('scroll', () => {
     if (!ENDPOINT || !KEY) return;                       /* not configured yet */
     if (location.protocol === 'file:') return;           /* opened from disk */
     if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;  /* local testing */
-    /* ?ping=force lets the owner test; real visitors still ping once per session */
+    /* ?ping=force lets the owner test on demand */
     var force = /[?&]ping=force/.test(location.search);
-    if (!force && sessionStorage.getItem('pv')) return;   /* already counted this session */
-    sessionStorage.setItem('pv', '1');
+    /* One ping per 30 minutes per browser. sessionStorage was worse: it lasts
+       until the whole browser closes, so the site owner never saw his own
+       visits and assumed it was broken. */
+    var COOLDOWN = 30 * 60 * 1000, last = 0;
+    try { last = parseInt(localStorage.getItem('pv_ts') || '0', 10) || 0; } catch (e) {}
+    if (!force && (Date.now() - last) < COOLDOWN) return;
+    try { localStorage.setItem('pv_ts', String(Date.now())); } catch (e) {}
 
     var d = {
       k: KEY,
