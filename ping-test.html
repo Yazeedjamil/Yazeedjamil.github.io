@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Notifier self-test</title>
+<style>
+  body{font-family:Segoe UI,Arial,sans-serif;background:#12131a;color:#e8e8ea;
+       margin:0;padding:28px;line-height:1.6}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#8a8c96;font-size:13px;margin-bottom:22px}
+  .card{background:#1c1e27;border:1px solid #2b2e3a;border-radius:10px;
+        padding:16px 18px;margin-bottom:14px}
+  .k{color:#8a8c96;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  .v{font-family:Consolas,monospace;font-size:13px;word-break:break-all;margin-top:3px}
+  #verdict{font-size:17px;font-weight:600;padding:18px;border-radius:10px;
+           text-align:center;margin-bottom:18px;background:#2b2e3a}
+  .ok{background:#12432a !important;color:#7ee2a8}
+  .bad{background:#4a1b1b !important;color:#ff9d9d}
+  .wait{background:#3a3410 !important;color:#ffd98a}
+  ul{margin:6px 0 0;padding-left:20px;font-size:13px}
+  li{margin-bottom:4px}
+  code{background:#2b2e3a;padding:1px 5px;border-radius:4px;font-size:12px}
+  button{background:#3b6fd4;color:#fff;border:0;padding:11px 18px;border-radius:8px;
+         font-size:14px;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<h1>Portfolio notifier — self-test</h1>
+<div class="sub">This page fires a test ping and reports exactly what happened.</div>
+
+<div id="verdict" class="wait">Testing…</div>
+
+<div class="card"><div class="k">Image beacon (what the portfolio uses)</div><div class="v" id="r1">running…</div></div>
+<div class="card"><div class="k">Fetch no-cors (second method)</div><div class="v" id="r2">running…</div></div>
+<div class="card"><div class="k">Endpoint</div><div class="v" id="ep"></div></div>
+<div class="card"><div class="k">Cooldown timestamp in this browser</div><div class="v" id="ls"></div></div>
+<div class="card"><div class="k">Browser</div><div class="v" id="ua"></div></div>
+
+<div class="card">
+  <div class="k">If both methods fail</div>
+  <ul>
+    <li>An ad-blocker or privacy extension is blocking requests to <code>script.google.com</code> — this is the most common cause. Try an Incognito window with extensions off.</li>
+    <li>Or a network/DNS filter is blocking it.</li>
+  </ul>
+</div>
+
+<button onclick="location.href='?again='+Date.now()">Run again</button>
+
+<script>
+var ENDPOINT = 'https://script.google.com/macros/s/AKfycbydb048Z4Sq4cA-k1MYpAEp5HJygBnpYWjp88sy8Uc3GJjaj62MXY6ozadxOk5H4BtMZQ/exec';
+var KEY = 'yz-qfp7fp8d7ntpnr';
+
+document.getElementById('ep').textContent = ENDPOINT.slice(0, 62) + '…';
+document.getElementById('ua').textContent = navigator.userAgent;
+try {
+  var t = localStorage.getItem('pv_ts');
+  document.getElementById('ls').textContent = t
+    ? new Date(parseInt(t,10)).toString() + '  (' + Math.round((Date.now()-t)/60000) + ' min ago)'
+    : 'not set — a normal visit would ping';
+} catch (e) { document.getElementById('ls').textContent = 'localStorage blocked: ' + e; }
+
+function qs(ref) {
+  var d = { k: KEY, ref: ref, lang: navigator.language||'',
+            scr: screen.width+'x'+screen.height, ua: navigator.userAgent||'', path: '/selftest' };
+  return Object.keys(d).map(function(n){ return n+'='+encodeURIComponent(d[n]); }).join('&');
+}
+
+var done = { img: null, fetch: null };
+function verdict() {
+  if (done.img === null || done.fetch === null) return;
+  var el = document.getElementById('verdict');
+  if (done.img || done.fetch) {
+    el.className = 'ok';
+    el.textContent = '✓ Ping sent — check the Sheet for a SELFTEST row';
+  } else {
+    el.className = 'bad';
+    el.textContent = '✗ Both methods blocked — something is stopping requests to script.google.com';
+  }
+}
+
+/* method 1: image beacon */
+var t0 = Date.now();
+var img = new Image();
+img.onload = function () {
+  done.img = true;
+  document.getElementById('r1').textContent = 'reached server (onload) in ' + (Date.now()-t0) + 'ms';
+  verdict();
+};
+img.onerror = function () {
+  /* onerror is EXPECTED: the response is text, not an image. The request still
+     reached the server. A blocked request errors much faster (<30ms). */
+  var ms = Date.now() - t0;
+  done.img = ms > 60;
+  document.getElementById('r1').textContent =
+    'onerror after ' + ms + 'ms — ' + (ms > 60
+      ? 'this is normal (response is text, not an image); request DID reach the server'
+      : 'too fast to be a real round trip; looks BLOCKED by an extension');
+  verdict();
+};
+img.src = ENDPOINT + '?' + qs('SELFTEST-IMG');
+
+/* method 2: fetch no-cors */
+var t1 = Date.now();
+fetch(ENDPOINT + '?' + qs('SELFTEST-FETCH'), { mode: 'no-cors', cache: 'no-store' })
+  .then(function () {
+    done.fetch = true;
+    document.getElementById('r2').textContent = 'sent OK in ' + (Date.now()-t1) + 'ms (opaque response, as expected)';
+    verdict();
+  })
+  .catch(function (e) {
+    done.fetch = false;
+    document.getElementById('r2').textContent = 'FAILED after ' + (Date.now()-t1) + 'ms: ' + e;
+    verdict();
+  });
+</script>
+</body>
+</html>
