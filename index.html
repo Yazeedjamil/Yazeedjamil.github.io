@@ -1267,7 +1267,11 @@ window.addEventListener('scroll', () => {
       lang: navigator.language || '',
       scr: (screen.width || 0) + 'x' + (screen.height || 0),
       ua: navigator.userAgent || '',
-      path: location.pathname || '/'
+      path: location.pathname || '/',
+      tz: (function () {
+        try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+        catch (e) { return ''; }
+      })()
     };
     var qs = Object.keys(d).map(function (n) {
       return n + '=' + encodeURIComponent(d[n]);
