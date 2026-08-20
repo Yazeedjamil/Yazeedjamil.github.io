@@ -1256,7 +1256,7 @@ window.addEventListener('scroll', () => {
     /* One ping per 30 minutes per browser. sessionStorage was worse: it lasts
        until the whole browser closes, so the site owner never saw his own
        visits and assumed it was broken. */
-    var COOLDOWN = 30 * 60 * 1000, last = 0;
+    var COOLDOWN = 2 * 60 * 1000, last = 0;
     try { last = parseInt(localStorage.getItem('pv_ts') || '0', 10) || 0; } catch (e) {}
     if (!force && (Date.now() - last) < COOLDOWN) return;
     try { localStorage.setItem('pv_ts', String(Date.now())); } catch (e) {}
