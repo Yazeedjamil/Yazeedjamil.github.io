@@ -1259,7 +1259,9 @@ window.addEventListener('scroll', () => {
     var COOLDOWN = 2 * 60 * 1000, last = 0;
     try { last = parseInt(localStorage.getItem('pv_ts') || '0', 10) || 0; } catch (e) {}
     if (!force && (Date.now() - last) < COOLDOWN) return;
-    try { localStorage.setItem('pv_ts', String(Date.now())); } catch (e) {}
+    /* The cooldown is stamped only once a request has actually gone out - see
+       markSent below. Stamping it here silenced the next two minutes even when
+       the ping had been blocked and nothing was ever sent. */
 
     var d = {
       k: KEY,
@@ -1277,12 +1279,38 @@ window.addEventListener('scroll', () => {
       return n + '=' + encodeURIComponent(d[n]);
     }).join('&');
 
-    /* fire and forget - an Image GET avoids CORS entirely and cannot block
-       rendering. The browser will log a console warning about the response
-       type; that is expected and harmless. */
-    var img = new Image();
-    img.referrerPolicy = 'no-referrer-when-downgrade';
-    img.src = ENDPOINT + '?' + qs;
+    var url = ENDPOINT + '?' + qs;
+
+    /* Only a request that actually left the browser starts the cooldown. */
+    function markSent() {
+      try { localStorage.setItem('pv_ts', String(Date.now())); } catch (e) {}
+    }
+
+    /* Two ways to fire, in order of how well each survives being blocked.
+       fetch first: it is a plain GET, keepalive lets it outlive the page being
+       closed straight after, and ad blockers and Edge's tracking prevention
+       drop image requests to script hosts far more readily than they drop
+       fetch. That silent drop - no error, no email - is what made this look
+       broken for five days while the backend was fine the whole time.
+       An Image GET stays as the fallback for browsers without fetch.
+       sendBeacon is deliberately NOT used: it sends a POST, and the Apps
+       Script only answers doGet. */
+    function imageBeacon() {
+      var img = new Image();
+      img.referrerPolicy = 'no-referrer-when-downgrade';
+      img.onload = img.onerror = markSent;   /* either way it reached the wire */
+      img.src = url;
+    }
+
+    var tried = false;
+    try {
+      if (window.fetch) {
+        fetch(url, { mode: 'no-cors', keepalive: true, cache: 'no-store' })
+          .then(markSent, imageBeacon);      /* opaque response = delivered */
+        tried = true;
+      }
+    } catch (e) { /* fall through to the image */ }
+    if (!tried) imageBeacon();
   } catch (e) { /* never let analytics break the page */ }
 })();
 /* =================== END VISIT PINGER =================== */
