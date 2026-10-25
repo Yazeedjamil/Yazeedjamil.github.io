@@ -570,7 +570,7 @@
 
   // ---- a job: progress, then the finish ---------------------------------------------------------------------------
   var ACTIVE = ['queued', 'claimed', 'running'];
-  var STATE_WORDS = { queued: 'Waiting for the PC', claimed: 'Starting Revit on the PC', running: 'Exporting', done: 'Done', failed: 'Failed', cancelled: 'Cancelled', refused: 'Refused by the PC' };
+  var STATE_WORDS = { queued: 'Waiting for the PC', claimed: 'Starting Revit on the PC', running: 'Exporting', done: 'Done', failed: 'Failed', cancelled: 'Cancelled', refused: 'Refused by the PC', lost: 'No word from the PC for 10 minutes', expired: 'The PC never picked it up' };
   var MODEL_WORDS = { waiting: 'Waiting', opening: 'Opening', printing: 'Printing', done: 'Done', failed: 'Failed' };
 
   async function jobView(email, id) {
