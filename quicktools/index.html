@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quick Tools remote</title>
+<meta name="description" content="Start a Quick Tools export on your own PC from your phone, and follow it to the last sheet.">
+<meta name="theme-color" content="#0F766E" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171B1E" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quick Tools">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<!-- Quick Tools remote export (PLAN Section 38). Everything on this page is built with createElement / textContent
+     in app.js - there is no innerHTML anywhere. The page holds no secret: config.js names the Quick Tools server's
+     address, and each phone signs in with the 6-digit email code. -->
+<div class="app" id="app">
+  <header class="bar" id="bar">
+    <a class="brand" href="#/" aria-label="Quick Tools remote - your PCs">
+      <img src="icons/favicon-32.png" alt="" width="22" height="22">
+      <span>Quick Tools</span><span class="brand-sub">remote</span>
+    </a>
+    <div class="bar-end">
+      <button class="icon-btn" id="theme" type="button" aria-label="Light or dark"></button>
+    </div>
+  </header>
+  <div class="offline" id="offline" role="status" hidden>No connection - this page shows what it last knew. Nothing is sent until the phone is online again.</div>
+  <main class="main" id="main" tabindex="-1"></main>
+</div>
+<noscript><p class="noscript">Quick Tools remote needs JavaScript.</p></noscript>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
