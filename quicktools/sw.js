@@ -2,7 +2,7 @@
 // opens without a connection and says so; it never touches a call to the server (another origin) and never queues
 // anything. A new version is a new cache name: the next open installs it and drops the old one.
 'use strict';
-var VERSION = 'qt-remote-0.27.0-test-1';
+var VERSION = 'qt-remote-0.27.0-test-2';
 var SHELL = [
   './', './index.html', './app.css', './app.js', './config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png',

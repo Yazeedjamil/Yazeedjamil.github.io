@@ -12,6 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Quick Tools">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="referrer" content="no-referrer">
+<!-- Gate B 7: scripts from this folder only (no inline script), the server's /exec and its googleusercontent redirect
+     the only addresses it talks to. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">

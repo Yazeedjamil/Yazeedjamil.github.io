@@ -6,7 +6,8 @@
   'use strict';
 
   var CFG = window.QT_CONFIG || { exec: '', version: '' };
-  var STORE_SESSIONS = 'qt.remote.sessions', STORE_THEME = 'qt.remote.theme';
+  // Gate B 7: every key this page keeps starts qt_ - the origin (Yazeedjamil.github.io) also serves other pages.
+  var STORE_SESSIONS = 'qt_remote_sessions', STORE_THEME = 'qt_remote_theme';
   var POLL_MS = 4000;
   var main = document.getElementById('main');
 
@@ -25,6 +26,7 @@
       else if (k === 'value') n.value = v;
       else if (k === 'checked') n.checked = !!v;
       else if (k === 'disabled') n.disabled = !!v;
+      else if (k === 'style') n.style.cssText = String(v);   // CSSOM: allowed by the page's CSP (style-src 'self')
       else n.setAttribute(k, v === true ? '' : String(v));
     });
     for (var i = 2; i < arguments.length; i++) add(n, arguments[i]);
@@ -465,10 +467,18 @@
   }
 
   // The server's and the PC's own rules for a name the phone sends (backend remoteSubfolderError_, CmdLogic RemoteNames).
-  var RESERVED = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
+  // Gate B 7: NFC first; control / format characters (Unicode Cc, Cf, Zl, Zp - a bidi override, a zero-width space)
+  // refused; COM0-9 / LPT0-9 with the superscript 1 2 3 and CONIN$ / CONOUT$ reserved.
+  var RESERVED = ['CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$',
+    'COM0', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'COM\u00b9', 'COM\u00b2', 'COM\u00b3',
+    'LPT0', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9', 'LPT\u00b9', 'LPT\u00b2', 'LPT\u00b3'];
+  var CONTROL_RX = /[\u0000-\u001f\u007f-\u009f\u00ad\u0600-\u0605\u061c\u06dd\u070f\u08e2\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\ufeff\ufff9-\ufffb]|\ud804[\udcbd\udccd]|\ud80d[\udc30-\udc3f]|\ud82f[\udca0-\udca3]|\ud834[\udd73-\udd7a]|\udb40[\udc01\udc20-\udc7f]/;
+  function nfc(s) { try { return String(s || '').normalize('NFC'); } catch (e) { return String(s || ''); } }
   function plainNameError(s) {
-    if (!s || s.trim() !== s) return 'spaces';
-    if (/[\u0000-\u001f]/.test(s)) return 'control';
+    s = nfc(s);
+    if (!s) return 'spaces';
+    if (CONTROL_RX.test(s)) return 'control';
+    if (s.trim() !== s) return 'spaces';
     if (s.indexOf('..') >= 0) return 'dots';
     if (/[\\\/]/.test(s)) return 'separator';
     if (s.indexOf(':') >= 0) return 'drive';
@@ -477,8 +487,9 @@
     if (RESERVED.indexOf(s.split('.')[0].toUpperCase().trim()) >= 0) return 'reserved';
     return '';
   }
-  function subfolderError(s) { if (!s) return ''; if (s.length > 80) return 'too_long'; return plainNameError(s); }
+  function subfolderError(s) { s = nfc(s); if (!s) return ''; if (s.length > 80) return 'too_long'; return plainNameError(s); }
   function profileNameError(s, existing) {
+    s = nfc(s);
     if (!s) return '';
     if (s.length > 60) return 'too_long';
     var e = plainNameError(s);
@@ -544,10 +555,19 @@
       err.textContent = '';
       var settings = {};
       Object.keys(job.changes).forEach(function (k) { if (SETTING_KEYS.indexOf(k) >= 0 && job.changes[k] !== '') settings[k] = String(job.changes[k]); });
+      // Decision 38.7a: each sheet by its number AND the element id the PC listed - the PC refuses a renumbered one.
       var models = Object.keys(job.picks).filter(function (id) { return job.picks[id].size; })
-        .map(function (id) { return { id: id, sheets: Array.from(job.picks[id]) }; });
+        .map(function (id) {
+          var sheets = Array.from(job.picks[id]);
+          var m = (job.reg.models || []).filter(function (x) { return x.id === id; })[0] || { sheets: [] };
+          var idOf = {};
+          (m.sheets || []).forEach(function (s) { idOf[s[0]] = /^\d{1,19}$/.test(String(s[4] || '')) ? String(s[4]) : ''; });
+          var out = { id: id, sheets: sheets };
+          if (sheets.some(function (n) { return idOf[n]; })) out.ids = sheets.map(function (n) { return idOf[n] || ''; });
+          return out;
+        });
       var r = await call('r_job_new', { job: { pc: job.pc, models: models, profile: job.profile, settings: settings, folder: job.folder,
-        subfolder: job.subfolder, save_as: job.saveAs.trim(), mail: job.mail } }, job.email);
+        subfolder: nfc(job.subfolder), save_as: nfc(job.saveAs.trim()), mail: job.mail } }, job.email);
       go1.disabled = false;
       if (!r.ok) { err.textContent = say(r) + (r.detail ? ' (' + r.detail + ')' : ''); return; }
       go('#/job/' + encodeURIComponent(job.email) + '/' + encodeURIComponent(r.job));
@@ -637,6 +657,8 @@
     var byModel = {};
     missed.forEach(function (m) { (byModel[m.name || m.model] = byModel[m.name || m.model] || []).push(m); });
     var od = s.onedrive && s.onedrive.path ? s.onedrive : null;
+    // Gate B 7: the OneDrive link only when it is an https address (never javascript: or data:).
+    var odWeb = od && /^https:\/\/[^\s]+$/i.test(String(od.web || '')) ? String(od.web) : '';
     var copyBtn = od ? h('button', { cls: 'btn ghost small', type: 'button', text: 'Copy path', on: { click: function () {
       var t = 'OneDrive/' + od.path;
       if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { copyBtn.textContent = 'Copied'; }, function () { copyBtn.textContent = t; });
@@ -654,7 +676,7 @@
       od ? h('div', { cls: 'card pad' },
         h('b', { text: 'In OneDrive' }), h('p', { cls: 'mono', text: od.path, style: 'margin:6px 0 10px;word-break:break-all' }),
         h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
-          od.web ? h('a', { cls: 'btn small', href: od.web, target: '_blank', rel: 'noopener noreferrer', text: 'Open in OneDrive' }) : null, copyBtn)) : null,
+          odWeb ? h('a', { cls: 'btn small', href: odWeb, target: '_blank', rel: 'noopener noreferrer', text: 'Open in OneDrive' }) : null, copyBtn)) : null,
       missed.length ? h('div', { cls: 'card pad' }, h('b', { text: 'Not written' }), Object.keys(byModel).map(function (name) {
         return h('div', null, h('div', { cls: 'muted', style: 'margin-top:10px', text: name }), h('ul', { cls: 'sheet-list' }, byModel[name].map(function (m) {
           return h('li', null, h('span', { cls: 'num', text: m.number }), h('span', { cls: 'grow' }, h('div', { text: m.sheet || '' }), h('div', { cls: 'why', text: m.format + ' · ' + m.why })));
